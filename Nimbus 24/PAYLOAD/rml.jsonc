@@ -1,0 +1,160 @@
+{
+	"General": {
+		"LaunchAccelerationThreshold": 2,
+		"NetworkLogDestination": 1
+	},
+	"Radio": {
+		"Override": true,
+		"Frequency": 873000000, //Hz
+		// "SyncByte": 243, //Leave this alone pleaseeee
+		"Bandwidth": 500000, //Hz
+		"SpreadingFactor": 7,
+		"TxPower": 20 //in dBm
+	},
+	"Deployers": [
+		{
+			"id": 0, //local pyro to power the servo
+			"type": "local_pyro",
+			"channel": 3 
+		},
+		{
+			"id": 1, //local servo to control its position
+			"type": "local_servo",
+			"channel": 0
+		}
+	],
+	"Events": [
+		{ //switch servo power on for 20 minutes while the payload is descending under parafoil
+			"name": "Power servo",
+			"id": 0,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 0,
+					"param": 600000 //20 minutes in ms
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceApogee",
+				"threshold": 25000 //25 after apogee -> payload deployment @ t = 15, and allow another 10s for the payload to come out
+			}
+		},
+		{ //turn servo in one direction
+			"name": "Servo start turning", 
+			"id": 1,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 1,
+					"param": 70
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceEvent",
+				"component": 0,
+				"threshold": 50 //allow some time for the servo to turn on after switching power
+			}
+		},
+		{ //stop turning servo after 2s
+			"name": "Stop servo turning",
+			"id": 2,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 1,
+					"param": 90 //stop servo from moving (continuous rotation, so this is equivalent to centering a 180 deg servo)
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceEvent",
+				"component": 1,
+				"threshold": 2000 // 5s after the servo started turning
+			}
+		},
+		{ // turn servo full speed in the other direction after another 5s.
+			"name": "Turn servo back towards center",
+			"id": 3,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 1,
+					"param": 120
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceEvent",
+				"component": 2,
+				"threshold": 50000
+			}
+		},
+		{ // wait another 5 seconds and stop the servo again
+			"name": "Stop servo back at centre",
+			"id": 4,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 1,
+					"param": 90 //back to stopped / center
+				}
+			],
+			"condition": {
+					"operator": "MORETHAN",
+					"flightVar": "TimeSinceEvent",
+					"component": 3,
+					"threshold": 2000
+				}
+			},
+		{ // turn servo full speed in the same direction after another 5s.
+			"name": "Turn the opposite direction",
+			"id": 5,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 1,
+					"param": 120
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceEvent",
+				"component": 4,
+				"threshold": 20000
+			}
+		},
+		{ // wait another 5 seconds and stop the servo again
+			"name": "Stop servo at the other end",
+			"id": 6,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 1,
+					"param": 90 //back to stopped / center
+				}
+			],
+			"condition": {
+					"operator": "MORETHAN",
+					"flightVar": "TimeSinceEvent",
+					"component": 5,
+					"threshold": 2000
+				}
+			}
+		]
+	}

@@ -1,0 +1,10 @@
+{
+	"Radio": {
+		"Override": true,
+		"Frequency": 869525000, //Hz
+		// "SyncByte": 243, //Leave this alone pleaseeee
+		"Bandwidth": 500000, //Hz
+		"SpreadingFactor": 7,
+		"TxPower": 20 //in dBm
+	}
+}

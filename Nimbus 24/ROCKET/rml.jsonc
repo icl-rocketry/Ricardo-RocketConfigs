@@ -1,0 +1,297 @@
+{
+	"General": {
+		"LaunchAccelerationThreshold": 2,
+		"NetworkLogDestination": 1
+	},
+	"Radio": {
+		"Override": true,
+		"Frequency": 869525000, //Hz
+		// "SyncByte": 243, //Leave this alone pleaseeee
+		"Bandwidth": 500000, //Hz
+		"SpreadingFactor": 7,
+		"TxPower": 20 //in dBm
+	},
+	"Deployers": [
+		{
+			"id": 0, //separation
+			"type": "net_actuator",
+			"address": 30,
+			"destination_service": 10
+		},
+		{
+			"id": 1, //disreefing/main deployment
+			"type": "net_actuator",
+			"address": 30,
+			"destination_service": 11
+		},
+		{
+			"id": 2, //payload deploy 0
+			"type": "net_actuator",
+			"address": 31,
+			"destination_service": 10
+		},
+		{
+			"id": 3, //payload deploy 1
+			"type": "net_actuator",
+			"address": 31,
+			"destination_service": 11
+		},
+		{
+			"id": 4, //canard controller
+			"type": "net_actuator",
+			"address": 40,
+			"destination_service": 10
+		},
+		{
+			"id": 5, //camera board
+			"type": "net_actuator",
+			"address": 41,
+			"destination_service": 10
+		}
+	],
+	"Engines": [
+		{
+			"id": 0,
+			"type": "ThanosR",
+			"engine": {
+				"address": 10,
+				"destination_service": 10
+			},
+			"oxServoVentValve": {
+				"address": 11,
+				"destination_service": 10
+			},
+			"oxSolenoidVentValve": {
+				"address": 14,
+				"destination_service": 13
+			},
+			"fuelSolenoidVentValve": {
+				"address": 14,
+				"destination_service": 12
+			},
+			"prssSolenoidVentValve": {
+				"address": 14,
+				"destination_service": 11
+			},
+			"eReg": {
+				"address": 13,
+				"destination_service": 10
+			}
+		}
+	],
+	"Controllers": [],
+	"Events": [
+		{ // engine ignition event
+			"name": "Ignition",
+			"id": 0,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "engine",
+					"id": 0,
+					"param": 1
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceIgnition",
+				"threshold": 0
+			}
+		},
+		{ // canard despin event
+			"name": "Despin",
+			"id": 1,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 4,
+					"param": 0
+				}
+			],
+			"condition": {
+				"operator": "AND",
+				"condition": [
+					{
+						"operator": "MORETHAN",
+						"flightVar": "TimeSinceIgnition",
+						"threshold": 7000 //at least 7 seconds from ignition so we're definitely not actuating during burn
+					},
+					{
+						"operator": "LESSTHAN",
+						"flightVar": "Position",
+						"component": 2, //canards active only above 1.5km
+						"threshold": -1500
+					}
+				]
+
+			}
+		},
+		{ // engine shutdown event
+			"name": "Engine shutdown",
+			"id": 2,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "engine",
+					"id": 0,
+					"param": 0
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceIgnition",
+				"threshold": 25000 // burning to depletion regardless - this event is so that solenoids get unpowered
+			}
+		},
+		{ // separation event
+			"name": "Separation",
+			"id": 3,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 0,
+					"param": 15000
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceApogee",
+				"threshold": 0
+			}
+		},
+		{ // payload deployment event
+			"name": "Payload deployment",
+			"id": 4,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 2, //deployer servo 0
+					"param": 180
+				},
+				{
+					"type": "deployment",
+					"id": 3, //deployer servo 1
+					"param": 0
+				}
+			],
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceApogee",
+				"threshold": 15000 //15s after apogee so the rocket has best chance of being vertical
+			}
+		},
+		{ // disarm canards at apogee
+			"name": "Disarm canards",
+			"id": 5,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": 
+				{
+					"type": "command",
+					"destination": 40,
+					"destination_service": 10,
+					"command_id": 4,
+					"command_arg": 0
+				},
+			"condition": {
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceApogee",
+				"threshold": 0
+			}
+		},
+		{ //main deployment event
+			"name": "Main deployment",
+			"id": 6,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "deployment",
+					"id": 1,
+					"param": 15000
+				}
+			],
+			"condition": {
+				"operator": "AND",
+				"condition": [
+					{
+						"operator": "MORETHAN",
+						"flightVar": "Position",
+						"component": 2,
+						"threshold": -1000 //1000m in NED
+					},
+					{
+						"operator": "MORETHAN",
+						"flightVar": "TimeSinceApogee",
+						"threshold": 0
+					}
+				]
+			}
+		},
+		{ //Turn deployment rail off 
+			"name": "Deployment rail to ready",
+			"id": 7,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "command",
+					"destination": 20,
+					"command_id": 1,
+					"command_arg": 0
+				},
+				{
+					"type": "command",
+					"destination": 21,
+					"command_id": 1,
+					"command_arg": 0
+				}
+			],
+			"condition": {
+				"operator": "AND",
+				"condition": [
+					{
+						"operator": "MORETHAN",
+						"flightVar": "Position",
+						"component": 2,
+						"threshold": -200 //200m in NED
+					},
+					{
+						"operator": "MORETHAN",
+						"flightVar": "TimeSinceApogee",
+						"threshold": 600000 //10 mins
+					}
+				]
+			}
+		},
+		{ //Turn cameras off 
+			"name": "Cameras off",
+			"id": 8,
+			"single_fire": true,
+			"cooldown": 0,
+			"action": [
+				{
+					"type": "command",
+					"destination": 41,
+					"command_id": 10,
+					"command_arg": 0
+				}
+			],
+			"condition": 
+			{
+				"operator": "MORETHAN",
+				"flightVar": "TimeSinceApogee",
+				"threshold": 1800000 //30 mins
+			}
+
+		}
+	]
+}
